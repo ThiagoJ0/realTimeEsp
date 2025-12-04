@@ -9,8 +9,9 @@ const PORT = 3001;
 app.use(express.json());
 app.use(express.static('public'));
 
-// Arquivo de dados
+// Arquivos
 const DADOS_FILE = path.join(__dirname, 'dados.txt');
+const ESTADO_FILE = path.join(__dirname, 'estado.txt');
 
 // Estado atual do sistema
 let estadoAtual = {
@@ -23,12 +24,32 @@ let estadoAtual = {
 
 // Comando pendente para o Nó 5 buscar
 let comandoPendente = {
-    emissao_ativa: true
+    emissao_ativa: false  // Começa DESLIGADO (sincronizado com Nó 1)
 };
 
-// Garante que o arquivo existe
+// Garante que os arquivos existem
 if (!fs.existsSync(DADOS_FILE)) {
     fs.writeFileSync(DADOS_FILE, '');
+}
+
+// Carrega estado salvo (se existir)
+if (fs.existsSync(ESTADO_FILE)) {
+    try {
+        const estadoSalvo = JSON.parse(fs.readFileSync(ESTADO_FILE, 'utf8'));
+        comandoPendente.emissao_ativa = estadoSalvo.emissao_ativa || false;
+        console.log(`[INIT] Estado carregado: emissao_ativa = ${comandoPendente.emissao_ativa}`);
+    } catch (e) {
+        console.log('[INIT] Arquivo de estado inválido, usando padrão (false)');
+        fs.writeFileSync(ESTADO_FILE, JSON.stringify({ emissao_ativa: false }));
+    }
+} else {
+    fs.writeFileSync(ESTADO_FILE, JSON.stringify({ emissao_ativa: false }));
+    console.log('[INIT] Arquivo de estado criado: emissao_ativa = false');
+}
+
+// Função para salvar estado
+function salvarEstado() {
+    fs.writeFileSync(ESTADO_FILE, JSON.stringify({ emissao_ativa: comandoPendente.emissao_ativa }));
 }
 
 // =============================================================================
@@ -86,7 +107,8 @@ app.post('/api/comando', (req, res) => {
     // Se receber emissao_ativa, controla ambas as válvulas
     if (typeof emissao_ativa === 'boolean') {
         comandoPendente.emissao_ativa = emissao_ativa;
-        console.log(`[POST /api/comando] Emissão alterada para: ${emissao_ativa}`);
+        salvarEstado();  // Persiste no arquivo
+        console.log(`[POST /api/comando] Emissão alterada para: ${emissao_ativa} (salvo em estado.txt)`);
     }
     
     // Controle individual (opcional, para expansão futura)
