@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle CAN - Sensores e Válvulas</title>
+    <title>Controle CAN</title>
     <style>
         * {
             margin: 0;
@@ -12,452 +13,522 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
             color: #fff;
             padding: 20px;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%);
+            background-attachment: fixed;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(100, 100, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(150, 100, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(80, 120, 255, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 600px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Glass Effect Base */
+        .glass {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.05) 0%,
+                    rgba(255, 255, 255, 0.02) 50%,
+                    rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 20px 25px;
         }
 
         h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #00d9ff;
-            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .status-bar {
-            background: rgba(255,255,255,0.1);
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .status-indicator {
+        .status {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
         }
 
         .status-dot {
-            width: 12px;
-            height: 12px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: #ff4444;
+            background: #ff4466;
+            box-shadow: 0 0 10px rgba(255, 68, 102, 0.5);
+            transition: all 0.3s;
         }
 
         .status-dot.online {
-            background: #44ff44;
-            box-shadow: 0 0 10px #44ff44;
+            background: #44ffaa;
+            box-shadow: 0 0 10px rgba(68, 255, 170, 0.5);
         }
 
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .card-icon {
-            font-size: 40px;
+        .section {
+            padding: 20px;
             margin-bottom: 15px;
         }
 
-        .card-label {
-            font-size: 14px;
-            color: #aaa;
-            margin-bottom: 5px;
+        .section-title {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            font-weight: 500;
         }
 
-        .card-value {
+        .sensores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .sensor {
+            text-align: center;
+            padding: 20px 15px;
+            border-radius: 16px;
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.03) 0%,
+                    rgba(255, 255, 255, 0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+        }
+
+        .sensor:hover {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.05) 0%,
+                    rgba(255, 255, 255, 0.02) 100%);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sensor-valor {
             font-size: 32px;
-            font-weight: bold;
-            color: #00d9ff;
+            font-weight: 300;
+            color: #fff;
+            letter-spacing: -1px;
         }
 
-        .card-unit {
-            font-size: 16px;
-            color: #888;
-        }
-
-        /* Controle de Válvulas */
-        .controle-section {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-        }
-
-        .controle-section h2 {
-            margin-bottom: 20px;
-            color: #00d9ff;
+        .sensor-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .valvulas {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
         .valvula {
+            border-radius: 16px;
+            padding: 25px 20px;
             text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.03) 0%,
+                    rgba(255, 255, 255, 0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
         }
 
-        .valvula-label {
-            margin-bottom: 10px;
-            font-size: 18px;
+        .valvula::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 16px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .valvula:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .valvula:active {
+            transform: translateY(0);
+        }
+
+        .valvula.aberta::before {
+            background: linear-gradient(135deg, rgba(68, 255, 170, 0.1) 0%, transparent 100%);
+            opacity: 1;
+        }
+
+        .valvula.aberta {
+            border-color: rgba(68, 255, 170, 0.3);
+            box-shadow: 0 0 30px rgba(68, 255, 170, 0.1);
+        }
+
+        .valvula.fechada::before {
+            background: linear-gradient(135deg, rgba(255, 68, 102, 0.1) 0%, transparent 100%);
+            opacity: 1;
+        }
+
+        .valvula.fechada {
+            border-color: rgba(255, 68, 102, 0.3);
+            box-shadow: 0 0 30px rgba(255, 68, 102, 0.1);
+        }
+
+        .valvula-nome {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            position: relative;
         }
 
         .valvula-status {
-            padding: 8px 20px;
+            font-size: 11px;
+            padding: 6px 14px;
             border-radius: 20px;
-            font-weight: bold;
-            margin-bottom: 15px;
+            display: inline-block;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            position: relative;
         }
 
-        .valvula-status.aberta {
-            background: rgba(68, 255, 68, 0.2);
-            color: #44ff44;
-            border: 1px solid #44ff44;
+        .valvula.aberta .valvula-status {
+            background: rgba(68, 255, 170, 0.15);
+            color: #44ffaa;
         }
 
-        .valvula-status.fechada {
-            background: rgba(255, 68, 68, 0.2);
-            color: #ff4444;
-            border: 1px solid #ff4444;
+        .valvula.fechada .valvula-status {
+            background: rgba(255, 68, 102, 0.15);
+            color: #ff4466;
         }
 
-        .btn-controle {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        button {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
+        .btn-todas {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
-            font-weight: bold;
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.05) 0%,
+                    rgba(255, 255, 255, 0.02) 100%);
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.5px;
         }
 
-        .btn-ligar {
-            background: linear-gradient(135deg, #44ff44, #00cc00);
-            color: #000;
+        .btn-todas:hover {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.08) 0%,
+                    rgba(255, 255, 255, 0.04) 100%);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
 
-        .btn-ligar:hover {
-            box-shadow: 0 0 20px rgba(68, 255, 68, 0.5);
-            transform: scale(1.05);
+        .btn-todas:active {
+            transform: translateY(0);
         }
 
-        .btn-desligar {
-            background: linear-gradient(135deg, #ff4444, #cc0000);
-            color: #fff;
+        .historico {
+            max-height: 180px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
         }
 
-        .btn-desligar:hover {
-            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
-            transform: scale(1.05);
+        .historico::-webkit-scrollbar {
+            width: 4px;
         }
 
-        /* Histórico */
-        .historico-section {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 25px;
+        .historico::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        .historico-section h2 {
-            margin-bottom: 20px;
-            color: #00d9ff;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .historico::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
         }
 
-        .btn-limpar {
-            background: rgba(255,255,255,0.1);
-            color: #aaa;
-            padding: 8px 15px;
+        .historico-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 30px 30px;
+            padding: 12px 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
             font-size: 12px;
+            transition: background 0.2s;
         }
 
-        .btn-limpar:hover {
-            background: rgba(255,68,68,0.3);
-            color: #ff4444;
+        .historico-item:hover {
+            background: rgba(255, 255, 255, 0.02);
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .historico-item:last-child {
+            border-bottom: none;
         }
 
-        th, td {
-            padding: 12px;
+        .historico-item span {
             text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255, 255, 255, 0.6);
         }
 
-        th {
-            background: rgba(0, 217, 255, 0.2);
-            color: #00d9ff;
+        .historico-item .hora {
+            color: rgba(255, 255, 255, 0.3);
+            text-align: left;
         }
 
-        tr:hover {
-            background: rgba(255,255,255,0.05);
+        .dot {
+            font-size: 10px;
+            transition: all 0.2s;
         }
 
-        .timestamp {
+        .dot.on {
+            color: #44ffaa;
+            text-shadow: 0 0 8px rgba(68, 255, 170, 0.5);
+        }
+
+        .dot.off {
+            color: #ff4466;
+            text-shadow: 0 0 8px rgba(255, 68, 102, 0.5);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 13px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .vazio {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.2);
+            padding: 30px;
             font-size: 12px;
-            color: #888;
         }
 
-        /* Responsivo */
-        @media (max-width: 600px) {
-            .cards {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .card-value {
-                font-size: 24px;
-            }
+        /* Liquid shine effect on hover */
+        .glass:hover {
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>🔧 Controle CAN - Sensores e Válvulas</h1>
-
-        <div class="status-bar">
-            <div class="status-indicator">
+        <header class="glass">
+            <h1>Controle CAN</h1>
+            <div class="status">
                 <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">Desconectado</span>
+                <span id="statusText">--</span>
             </div>
-            <div id="ultimaAtualizacao">--</div>
-        </div>
+        </header>
 
-        <div class="cards">
-            <div class="card">
-                <div class="card-icon">🌡️</div>
-                <div class="card-label">Temperatura</div>
-                <div class="card-value" id="temperatura">--</div>
-                <div class="card-unit">°C</div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">💨</div>
-                <div class="card-label">Pressão</div>
-                <div class="card-value" id="pressao">--</div>
-                <div class="card-unit">bar</div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">🔴</div>
-                <div class="card-label">Válvula 1</div>
-                <div class="card-value valvula-status" id="valvula1">--</div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon">🔵</div>
-                <div class="card-label">Válvula 2</div>
-                <div class="card-value valvula-status" id="valvula2">--</div>
+        <div class="section glass">
+            <div class="section-title">Sensores</div>
+            <div class="sensores">
+                <div class="sensor">
+                    <div class="sensor-valor"><span id="temperatura">--</span>°</div>
+                    <div class="sensor-label">Temperatura</div>
+                </div>
+                <div class="sensor">
+                    <div class="sensor-valor"><span id="pressao">--</span></div>
+                    <div class="sensor-label">Pressão bar</div>
+                </div>
             </div>
         </div>
 
-        <div class="controle-section">
-            <h2>⚙️ Controle de Emissão</h2>
-            <p style="text-align: center; color: #aaa; margin-bottom: 15px;">
-                Controla o estado de ambas as válvulas simultaneamente
-            </p>
-            <div class="btn-controle">
-                <button class="btn-ligar" onclick="enviarComando(true)">
-                    ▶ LIGAR EMISSÃO
-                </button>
-                <button class="btn-desligar" onclick="enviarComando(false)">
-                    ⏹ DESLIGAR EMISSÃO
-                </button>
+        <div class="section glass">
+            <div class="section-title">Válvulas</div>
+            <div class="valvulas">
+                <div class="valvula" id="v1Box" onclick="toggleValvula(1)">
+                    <div class="valvula-nome">Válvula 1</div>
+                    <div class="valvula-status" id="v1Status">--</div>
+                </div>
+                <div class="valvula" id="v2Box" onclick="toggleValvula(2)">
+                    <div class="valvula-nome">Válvula 2</div>
+                    <div class="valvula-status" id="v2Status">--</div>
+                </div>
             </div>
-            <p style="text-align: center; margin-top: 15px; font-size: 14px;">
-                Estado atual: <strong id="estadoEmissao">--</strong>
-            </p>
         </div>
 
-        <div class="historico-section">
-            <h2>
-                📊 Histórico de Leituras
-                <button class="btn-limpar" onclick="limparHistorico()">🗑️ Limpar</button>
-            </h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Hora</th>
-                        <th>Temp (°C)</th>
-                        <th>Pressão (bar)</th>
-                        <th>V1</th>
-                        <th>V2</th>
-                    </tr>
-                </thead>
-                <tbody id="historicoBody">
-                    <tr>
-                        <td colspan="5">Carregando...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="section glass">
+            <button class="btn-todas" onclick="toggleTodas()">Alternar Todas</button>
+        </div>
+
+        <div class="section glass">
+            <div class="section-title">Histórico</div>
+            <div class="historico" id="historico">
+                <div class="vazio">Carregando...</div>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_URL = '';  // Mesmo servidor
+        let estado = { valvula1: false, valvula2: false };
 
-        // Atualiza dados a cada 2 segundos
         setInterval(buscarEstado, 2000);
         setInterval(buscarHistorico, 5000);
-
-        // Busca inicial
         buscarEstado();
         buscarHistorico();
 
         async function buscarEstado() {
             try {
-                const response = await fetch(`${API_URL}/api/estado`);
-                const data = await response.json();
+                const res = await fetch('/api/estado');
+                const data = await res.json();
 
-                // Atualiza valores
-                document.getElementById('temperatura').textContent = 
-                    data.temperatura ? data.temperatura.toFixed(2) : '--';
-                document.getElementById('pressao').textContent = 
-                    data.pressao ? data.pressao.toFixed(2) : '--';
+                document.getElementById('temperatura').textContent = data.temperatura?.toFixed(1) || '--';
+                document.getElementById('pressao').textContent = data.pressao?.toFixed(2) || '--';
 
-                // Válvula 1
-                const v1 = document.getElementById('valvula1');
-                v1.textContent = data.valvula1 ? 'ABERTA' : 'FECHADA';
-                v1.className = 'card-value valvula-status ' + (data.valvula1 ? 'aberta' : 'fechada');
+                estado.valvula1 = data.comandoAtual?.valvula1 || false;
+                estado.valvula2 = data.comandoAtual?.valvula2 || false;
 
-                // Válvula 2
-                const v2 = document.getElementById('valvula2');
-                v2.textContent = data.valvula2 ? 'ABERTA' : 'FECHADA';
-                v2.className = 'card-value valvula-status ' + (data.valvula2 ? 'aberta' : 'fechada');
+                atualizarValvula(1, estado.valvula1);
+                atualizarValvula(2, estado.valvula2);
 
-                // Estado da emissão
-                const emissao = data.comandoAtual?.emissao_ativa;
-                document.getElementById('estadoEmissao').textContent = 
-                    emissao ? '🟢 LIGADA' : '🔴 DESLIGADA';
+                const dot = document.getElementById('statusDot');
+                const txt = document.getElementById('statusText');
 
-                // Status de conexão
-                const statusDot = document.getElementById('statusDot');
-                const statusText = document.getElementById('statusText');
-                
                 if (data.ultimaAtualizacao) {
                     const diff = Date.now() - new Date(data.ultimaAtualizacao).getTime();
-                    if (diff < 15000) {
-                        statusDot.classList.add('online');
-                        statusText.textContent = 'Conectado';
-                    } else {
-                        statusDot.classList.remove('online');
-                        statusText.textContent = 'Sem dados recentes';
-                    }
-
-                    document.getElementById('ultimaAtualizacao').textContent = 
-                        'Última atualização: ' + new Date(data.ultimaAtualizacao).toLocaleTimeString();
+                    const online = diff < 15000;
+                    dot.classList.toggle('online', online);
+                    txt.textContent = online ? 'Online' : 'Offline';
                 }
-
-            } catch (error) {
-                console.error('Erro ao buscar estado:', error);
+            } catch (e) {
                 document.getElementById('statusDot').classList.remove('online');
-                document.getElementById('statusText').textContent = 'Erro de conexão';
+                document.getElementById('statusText').textContent = 'Erro';
+            }
+        }
+
+        function atualizarValvula(num, aberta) {
+            const box = document.getElementById(`v${num}Box`);
+            const status = document.getElementById(`v${num}Status`);
+
+            box.className = 'valvula ' + (aberta ? 'aberta' : 'fechada');
+            status.textContent = aberta ? 'ABERTA' : 'FECHADA';
+        }
+
+        async function toggleValvula(num) {
+            const novoEstado = num === 1 ? !estado.valvula1 : !estado.valvula2;
+            const comando = num === 1 ? { valvula1: novoEstado } : { valvula2: novoEstado };
+            await enviarComando(comando);
+        }
+
+        async function toggleTodas() {
+            const todasAbertas = estado.valvula1 && estado.valvula2;
+            await enviarComando({ emissao_ativa: !todasAbertas });
+        }
+
+        async function enviarComando(comando) {
+            try {
+                const res = await fetch('/api/comando', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(comando)
+                });
+
+                if ((await res.json()).success) {
+                    buscarEstado();
+                }
+            } catch (e) {
+                toast('Erro ao enviar');
             }
         }
 
         async function buscarHistorico() {
             try {
-                const response = await fetch(`${API_URL}/api/historico?limite=10`);
-                const dados = await response.json();
+                const res = await fetch('/api/historico?limite=10');
+                const dados = await res.json();
+                const container = document.getElementById('historico');
 
-                const tbody = document.getElementById('historicoBody');
-                
-                if (dados.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5">Nenhum dado registrado</td></tr>';
+                if (!dados.length) {
+                    container.innerHTML = '<div class="vazio">Sem dados</div>';
                     return;
                 }
 
-                tbody.innerHTML = dados.reverse().map(item => `
-                    <tr>
-                        <td class="timestamp">${new Date(item.timestamp).toLocaleTimeString()}</td>
-                        <td>${item.temperatura?.toFixed(2) || '--'}</td>
-                        <td>${item.pressao?.toFixed(2) || '--'}</td>
-                        <td style="color: ${item.valvula1 ? '#44ff44' : '#ff4444'}">
-                            ${item.valvula1 ? '●' : '○'}
-                        </td>
-                        <td style="color: ${item.valvula2 ? '#44ff44' : '#ff4444'}">
-                            ${item.valvula2 ? '●' : '○'}
-                        </td>
-                    </tr>
+                container.innerHTML = dados.reverse().map(item => `
+                    <div class="historico-item">
+                        <span class="hora">${new Date(item.timestamp).toLocaleTimeString()}</span>
+                        <span>${item.temperatura?.toFixed(1) || '--'}°</span>
+                        <span>${item.pressao?.toFixed(2) || '--'}</span>
+                        <span class="dot ${item.valvula1 ? 'on' : 'off'}">●</span>
+                        <span class="dot ${item.valvula2 ? 'on' : 'off'}">●</span>
+                    </div>
                 `).join('');
-
-            } catch (error) {
-                console.error('Erro ao buscar histórico:', error);
-            }
+            } catch (e) { }
         }
 
-        async function enviarComando(ligado) {
-            try {
-                const response = await fetch(`${API_URL}/api/comando`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emissao_ativa: ligado })
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(`Comando enviado: Emissão ${ligado ? 'LIGADA' : 'DESLIGADA'}`);
-                    buscarEstado();
-                }
-
-            } catch (error) {
-                console.error('Erro ao enviar comando:', error);
-                alert('Erro ao enviar comando!');
-            }
-        }
-
-        async function limparHistorico() {
-            if (!confirm('Deseja limpar todo o histórico?')) return;
-
-            try {
-                await fetch(`${API_URL}/api/historico`, { method: 'DELETE' });
-                buscarHistorico();
-            } catch (error) {
-                console.error('Erro ao limpar histórico:', error);
-            }
+        function toast(msg) {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2000);
         }
     </script>
 </body>
+
 </html>
