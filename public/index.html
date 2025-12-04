@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle CAN - Sensores e Válvulas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d9ff;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+        }
+
+        .status-bar {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-dot.online {
+            background: #44ff44;
+            box-shadow: 0 0 10px #44ff44;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .card-label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .card-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+
+        .card-unit {
+            font-size: 16px;
+            color: #888;
+        }
+
+        /* Controle de Válvulas */
+        .controle-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .controle-section h2 {
+            margin-bottom: 20px;
+            color: #00d9ff;
+        }
+
+        .valvulas {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .valvula {
+            text-align: center;
+        }
+
+        .valvula-label {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .valvula-status {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .valvula-status.aberta {
+            background: rgba(68, 255, 68, 0.2);
+            color: #44ff44;
+            border: 1px solid #44ff44;
+        }
+
+        .valvula-status.fechada {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+            border: 1px solid #ff4444;
+        }
+
+        .btn-controle {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-ligar {
+            background: linear-gradient(135deg, #44ff44, #00cc00);
+            color: #000;
+        }
+
+        .btn-ligar:hover {
+            box-shadow: 0 0 20px rgba(68, 255, 68, 0.5);
+            transform: scale(1.05);
+        }
+
+        .btn-desligar {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: #fff;
+        }
+
+        .btn-desligar:hover {
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+            transform: scale(1.05);
+        }
+
+        /* Histórico */
+        .historico-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .historico-section h2 {
+            margin-bottom: 20px;
+            color: #00d9ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-limpar {
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 8px 15px;
+            font-size: 12px;
+        }
+
+        .btn-limpar:hover {
+            background: rgba(255,68,68,0.3);
+            color: #ff4444;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        th {
+            background: rgba(0, 217, 255, 0.2);
+            color: #00d9ff;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Responsivo */
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .card-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Controle CAN - Sensores e Válvulas</h1>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Desconectado</span>
+            </div>
+            <div id="ultimaAtualizacao">--</div>
+        </div>
+
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">🌡️</div>
+                <div class="card-label">Temperatura</div>
+                <div class="card-value" id="temperatura">--</div>
+                <div class="card-unit">°C</div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">💨</div>
+                <div class="card-label">Pressão</div>
+                <div class="card-value" id="pressao">--</div>
+                <div class="card-unit">bar</div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">🔴</div>
+                <div class="card-label">Válvula 1</div>
+                <div class="card-value valvula-status" id="valvula1">--</div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon">🔵</div>
+                <div class="card-label">Válvula 2</div>
+                <div class="card-value valvula-status" id="valvula2">--</div>
+            </div>
+        </div>
+
+        <div class="controle-section">
+            <h2>⚙️ Controle de Emissão</h2>
+            <p style="text-align: center; color: #aaa; margin-bottom: 15px;">
+                Controla o estado de ambas as válvulas simultaneamente
+            </p>
+            <div class="btn-controle">
+                <button class="btn-ligar" onclick="enviarComando(true)">
+                    ▶ LIGAR EMISSÃO
+                </button>
+                <button class="btn-desligar" onclick="enviarComando(false)">
+                    ⏹ DESLIGAR EMISSÃO
+                </button>
+            </div>
+            <p style="text-align: center; margin-top: 15px; font-size: 14px;">
+                Estado atual: <strong id="estadoEmissao">--</strong>
+            </p>
+        </div>
+
+        <div class="historico-section">
+            <h2>
+                📊 Histórico de Leituras
+                <button class="btn-limpar" onclick="limparHistorico()">🗑️ Limpar</button>
+            </h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Temp (°C)</th>
+                        <th>Pressão (bar)</th>
+                        <th>V1</th>
+                        <th>V2</th>
+                    </tr>
+                </thead>
+                <tbody id="historicoBody">
+                    <tr>
+                        <td colspan="5">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '';  // Mesmo servidor
+
+        // Atualiza dados a cada 2 segundos
+        setInterval(buscarEstado, 2000);
+        setInterval(buscarHistorico, 5000);
+
+        // Busca inicial
+        buscarEstado();
+        buscarHistorico();
+
+        async function buscarEstado() {
+            try {
+                const response = await fetch(`${API_URL}/api/estado`);
+                const data = await response.json();
+
+                // Atualiza valores
+                document.getElementById('temperatura').textContent = 
+                    data.temperatura ? data.temperatura.toFixed(2) : '--';
+                document.getElementById('pressao').textContent = 
+                    data.pressao ? data.pressao.toFixed(2) : '--';
+
+                // Válvula 1
+                const v1 = document.getElementById('valvula1');
+                v1.textContent = data.valvula1 ? 'ABERTA' : 'FECHADA';
+                v1.className = 'card-value valvula-status ' + (data.valvula1 ? 'aberta' : 'fechada');
+
+                // Válvula 2
+                const v2 = document.getElementById('valvula2');
+                v2.textContent = data.valvula2 ? 'ABERTA' : 'FECHADA';
+                v2.className = 'card-value valvula-status ' + (data.valvula2 ? 'aberta' : 'fechada');
+
+                // Estado da emissão
+                const emissao = data.comandoAtual?.emissao_ativa;
+                document.getElementById('estadoEmissao').textContent = 
+                    emissao ? '🟢 LIGADA' : '🔴 DESLIGADA';
+
+                // Status de conexão
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.ultimaAtualizacao) {
+                    const diff = Date.now() - new Date(data.ultimaAtualizacao).getTime();
+                    if (diff < 15000) {
+                        statusDot.classList.add('online');
+                        statusText.textContent = 'Conectado';
+                    } else {
+                        statusDot.classList.remove('online');
+                        statusText.textContent = 'Sem dados recentes';
+                    }
+
+                    document.getElementById('ultimaAtualizacao').textContent = 
+                        'Última atualização: ' + new Date(data.ultimaAtualizacao).toLocaleTimeString();
+                }
+
+            } catch (error) {
+                console.error('Erro ao buscar estado:', error);
+                document.getElementById('statusDot').classList.remove('online');
+                document.getElementById('statusText').textContent = 'Erro de conexão';
+            }
+        }
+
+        async function buscarHistorico() {
+            try {
+                const response = await fetch(`${API_URL}/api/historico?limite=10`);
+                const dados = await response.json();
+
+                const tbody = document.getElementById('historicoBody');
+                
+                if (dados.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">Nenhum dado registrado</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = dados.reverse().map(item => `
+                    <tr>
+                        <td class="timestamp">${new Date(item.timestamp).toLocaleTimeString()}</td>
+                        <td>${item.temperatura?.toFixed(2) || '--'}</td>
+                        <td>${item.pressao?.toFixed(2) || '--'}</td>
+                        <td style="color: ${item.valvula1 ? '#44ff44' : '#ff4444'}">
+                            ${item.valvula1 ? '●' : '○'}
+                        </td>
+                        <td style="color: ${item.valvula2 ? '#44ff44' : '#ff4444'}">
+                            ${item.valvula2 ? '●' : '○'}
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao buscar histórico:', error);
+            }
+        }
+
+        async function enviarComando(ligado) {
+            try {
+                const response = await fetch(`${API_URL}/api/comando`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ emissao_ativa: ligado })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Comando enviado: Emissão ${ligado ? 'LIGADA' : 'DESLIGADA'}`);
+                    buscarEstado();
+                }
+
+            } catch (error) {
+                console.error('Erro ao enviar comando:', error);
+                alert('Erro ao enviar comando!');
+            }
+        }
+
+        async function limparHistorico() {
+            if (!confirm('Deseja limpar todo o histórico?')) return;
+
+            try {
+                await fetch(`${API_URL}/api/historico`, { method: 'DELETE' });
+                buscarHistorico();
+            } catch (error) {
+                console.error('Erro ao limpar histórico:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  servidor-can:
+    build: .
+    container_name: servidor-can
+    ports:
+      - "3000:3001"
+    volumes:
+      - ./dados.txt:/app/dados.txt
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
