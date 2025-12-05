@@ -43,7 +43,6 @@
             z-index: 1;
         }
 
-        /* Glass Effect Base */
         .glass {
             background: linear-gradient(135deg,
                     rgba(255, 255, 255, 0.05) 0%,
@@ -366,7 +365,6 @@
             font-size: 12px;
         }
 
-        /* Liquid shine effect on hover */
         .glass:hover {
             box-shadow:
                 0 8px 32px rgba(0, 0, 0, 0.3),
@@ -439,11 +437,12 @@
                 const res = await fetch('/api/estado');
                 const data = await res.json();
 
-                document.getElementById('temperatura').textContent = data.temperatura?.toFixed(1) || '--';
-                document.getElementById('pressao').textContent = data.pressao?.toFixed(2) || '--';
+                document.getElementById('temperatura').textContent = data.temperatura?.toFixed(1) ?? '--';
+                document.getElementById('pressao').textContent = data.pressao?.toFixed(2) ?? '--';
 
-                estado.valvula1 = data.comandoAtual?.valvula1 || false;
-                estado.valvula2 = data.comandoAtual?.valvula2 || false;
+                // Usar ?? para garantir que false seja tratado corretamente
+                estado.valvula1 = data.comandoAtual?.valvula1 ?? false;
+                estado.valvula2 = data.comandoAtual?.valvula2 ?? false;
 
                 atualizarValvula(1, estado.valvula1);
                 atualizarValvula(2, estado.valvula2);
@@ -472,14 +471,29 @@
         }
 
         async function toggleValvula(num) {
-            const novoEstado = num === 1 ? !estado.valvula1 : !estado.valvula2;
+            // Pega o estado atual correto
+            const estadoAtual = num === 1 ? estado.valvula1 : estado.valvula2;
+            const novoEstado = !estadoAtual;
+
+            // Monta o comando correto
             const comando = num === 1 ? { valvula1: novoEstado } : { valvula2: novoEstado };
+
+            // Atualiza visualmente de imediato (feedback instantâneo)
+            atualizarValvula(num, novoEstado);
+
+            // Envia e sincroniza
             await enviarComando(comando);
         }
 
         async function toggleTodas() {
             const todasAbertas = estado.valvula1 && estado.valvula2;
-            await enviarComando({ emissao_ativa: !todasAbertas });
+            const novoEstado = !todasAbertas;
+
+            // Feedback visual imediato
+            atualizarValvula(1, novoEstado);
+            atualizarValvula(2, novoEstado);
+
+            await enviarComando({ emissao_ativa: novoEstado });
         }
 
         async function enviarComando(comando) {
@@ -490,11 +504,23 @@
                     body: JSON.stringify(comando)
                 });
 
-                if ((await res.json()).success) {
-                    buscarEstado();
+                const data = await res.json();
+
+                if (data.success) {
+                    // Atualiza estado local com resposta do servidor
+                    if (data.comando) {
+                        estado.valvula1 = data.comando.valvula1 ?? estado.valvula1;
+                        estado.valvula2 = data.comando.valvula2 ?? estado.valvula2;
+                        atualizarValvula(1, estado.valvula1);
+                        atualizarValvula(2, estado.valvula2);
+                    }
+                    // Busca estado completo do servidor
+                    await buscarEstado();
                 }
             } catch (e) {
                 toast('Erro ao enviar');
+                // Reverte visual em caso de erro
+                await buscarEstado();
             }
         }
 
@@ -512,8 +538,8 @@
                 container.innerHTML = dados.reverse().map(item => `
                     <div class="historico-item">
                         <span class="hora">${new Date(item.timestamp).toLocaleTimeString()}</span>
-                        <span>${item.temperatura?.toFixed(1) || '--'}°</span>
-                        <span>${item.pressao?.toFixed(2) || '--'}</span>
+                        <span>${item.temperatura?.toFixed(1) ?? '--'}°</span>
+                        <span>${item.pressao?.toFixed(2) ?? '--'}</span>
                         <span class="dot ${item.valvula1 ? 'on' : 'off'}">●</span>
                         <span class="dot ${item.valvula2 ? 'on' : 'off'}">●</span>
                     </div>
